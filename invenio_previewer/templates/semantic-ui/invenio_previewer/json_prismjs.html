@@ -10,5 +10,45 @@
 {%- extends config.PREVIEWER_ABSTRACT_TEMPLATE %}
 
 {% block panel %}
+
+<div class='rocrate'>
+{% if isROC %}
+<h2>Download Links</h2>
+<ul id='my_roc_list'></ul>
+<script>
+  const data = {{content | safe}}
+  //console.log(data)
+  const ul = document.getElementById('my_roc_list')
+
+  const download_icon = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>`;
+
+  for(let e of data['@graph']){
+	  if(e['@type']==='File' && e.hasOwnProperty('sha256')){
+		  const li = document.createElement('li');
+		  li.innerHTML = `<a target='_blank' href='https://lfs-resolver.nfdi4plants.org/presigned-url/?oid=${e['sha256']}'>${download_icon} ${e['@id']}</a>`
+	          ul.appendChild(li)
+	  }
+  }
+
+</script>
+<style>
+
+.rocrate {
+  font-family: sans-serif;
+}
+.rocrate ul {
+    list-style: none;
+}
+.rocrate ul svg {
+  fill:#0377cd;
+  margin:7px 0 -7px 0;
+}
+
+</style>
+<h2>Content</h2>
+{% endif %}
+
 <pre><code class="language-javascript">{{ content }}</code></pre>
+
+</div>
 {% endblock %}

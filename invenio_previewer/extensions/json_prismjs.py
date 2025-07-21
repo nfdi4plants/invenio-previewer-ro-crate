@@ -28,6 +28,7 @@ def render(file):
         return json.dumps(json_data, indent=4, separators=(",", ": "))
 
 
+
 def validate_json(file):
     """Validate a JSON file."""
     max_file_size = current_app.config.get(
@@ -49,11 +50,19 @@ def can_preview(file):
     return file.is_local() and file.has_extensions(".json") and validate_json(file)
 
 
+def read_json(file):
+    with file.open() as fp:
+        encoding = detect_encoding(fp, default="utf-8")
+        file_content = fp.read().decode(encoding)
+        return json.loads(file_content, object_pairs_hook=OrderedDict)
+
 def preview(file):
     """Render the appropriate template with embed flag."""
+    isROC = file.filename.endswith('ro-crate-metadata.json')
     return render_template(
         "invenio_previewer/json_prismjs.html",
         file=file,
+        isROC=isROC,
         content=render(file),
         js_bundles=current_previewer.js_bundles + ["prism_js.js"],
         css_bundles=["prism_css.css"],
