@@ -9,6 +9,25 @@
 
 {%- extends config.PREVIEWER_ABSTRACT_TEMPLATE %}
 
+{%- block head %}
+  {{ super() }}
+  <link rel="stylesheet" crossorigin href="{{ url_for('static', filename='roc/assets/index-Dl0qixEB.css') }}" />
+{%- endblock %}
+
 {% block panel %}
-<pre><code class="language-javascript">{{ content }}</code></pre>
+
+  <div class='rocrate'>
+  {% if isROC %}
+    <div id='root'></div>
+    <script>
+      const data = {{content | safe}}
+      window.arcwebview = {
+        getROCJson: ()=>new Promise(resolve=>resolve(JSON.stringify(data)))
+      };
+    </script>
+    <script type="module" src="{{ url_for('static', filename='roc/assets/index-Cpw6n7GG.js') }}" />
+  {% else %}
+    <pre><code class="language-javascript">{{ content }}</code></pre>
+  {% endif %}
+  </div>
 {% endblock %}

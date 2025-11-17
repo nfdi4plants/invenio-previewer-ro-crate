@@ -51,9 +51,11 @@ def can_preview(file):
 
 def preview(file):
     """Render the appropriate template with embed flag."""
+    isROC = file.filename.endswith('ro-crate-metadata.json')
     return render_template(
         "invenio_previewer/json_prismjs.html",
         file=file,
+        isROC=isROC,
         content=render(file),
         js_bundles=current_previewer.js_bundles + ["prism_js.js"],
         css_bundles=["prism_css.css"],
