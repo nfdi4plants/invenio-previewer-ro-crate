@@ -1,21 +1,16 @@
-{# -*- coding: utf-8 -*-
-
-  This file is part of Invenio.
-  Copyright (C) 2015-2025 CERN.
-  Copyright (C) 2022-2024 TU Wien.
-
-  Invenio is free software; you can redistribute it and/or modify it
-  under the terms of the MIT License; see LICENSE file for more details.
+{#
+  SPDX-FileCopyrightText: 2015-2025 CERN.
+  SPDX-FileCopyrightText: 2022-2024 TU Wien.
+  SPDX-License-Identifier: MIT
 #}
 
-{%- extends config.PREVIEWER_BASE_TEMPLATE %}
+{%- extends config.PREVIEWER_ABSTRACT_TEMPLATE %}
 
 {%- block html_tags %}
   {{ html_tags|safe }}
 {%- endblock %}
 
 {%- block head %}
-  {{ super() }}
   <meta name="google" content="notranslate">
   <link rel="resource" type="application/l10n" href="{{ url_for('static', filename='js/pdfjs/web/locale/locale.properties') }}" />
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='js/pdfjs/web/pdf_viewer.css') }}" />
@@ -26,10 +21,11 @@
   <script src="{{ url_for('static', filename='js/fullscreen.js') }}" defer></script>
 {%- endblock %}
 
-{%- block page_body %}
+{%- block panel %}
+
 <input id="pdf-file-uri" type="hidden" value="{{ file.uri }}" />
 <input id="pdf-enable-scripting" type="hidden" value="{{ config.PREVIEWER_PDF_JS_ENABLE_SCRIPTING|default(false)|lower }}" />
-<input id="pdf-document-init-params" type="hidden" value="{{ config.PREVIEWER_PDF_JS_DOCUMENT_INIT_PARAMS|default({})|tojson }}" />
+<input id="pdf-document-init-params" type="hidden" value='{{ config.PREVIEWER_PDF_JS_DOCUMENT_INIT_PARAMS|default({})|tojson }}' />
 
   <div id="outerContainer">
       <div id="mainContainer">
@@ -91,6 +87,11 @@
               </div>
 
               <div id="toolbarViewerRight" class="toolbarHorizontalGroup">
+                <div id="downloadContainer" class="toolbarHorizontalGroup">
+                  <button id="downloadButton" class="toolbarButton presentationMode labeled" title="{{ _("Download PDF file") }}">
+                    <span>{{ _("Download") }}</span>
+                  </button>
+                </div>
                 <div id="fullScreenModeContainer" class="toolbarHorizontalGroup">
                   <button id="fullScreenMode" class="toolbarButton presentationMode visibleLargeView" title="Toggle Fullscreen Mode" tabindex="0">
                     <span>{{ _("Toggle Fullscreen Mode") }}</span>

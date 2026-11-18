@@ -1,14 +1,34 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2019 CERN.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2016-2019 CERN.
+# SPDX-License-Identifier: MIT
 
 """Views module tests."""
 
-from flask import render_template_string
+from io import BytesIO
+
+import pytest
+from flask import Flask, render_template_string
+
+from invenio_previewer.api import PreviewFile
+from invenio_previewer.extensions import ipynb, mistune
+
+
+@pytest.mark.parametrize("previewer, extension", [(ipynb, "ipynb"), (mistune, "md")])
+@pytest.mark.parametrize("limit", [None, 5])
+@pytest.mark.parametrize("offset, expected", [(-1, True), (0, True), (1, False)])
+def test_server_previewer_size_limit(
+    record, previewer, extension, limit, offset, expected
+):
+    """Reject oversized notebooks and Markdown before rendering their content."""
+    app = Flask(__name__)
+    if limit is not None:
+        app.config["PREVIEWER_MAX_FILE_SIZE_BYTES"] = limit
+    size = (1024 * 1024 if limit is None else limit) + offset
+    filename = f"test.{extension}"
+    record.files[filename] = BytesIO(b" " * size)
+    file = PreviewFile(None, record, record.files[filename])
+
+    with app.app_context():
+        assert previewer.can_preview(file) is expected
 
 
 def test_view_macro_file_list(testapp):

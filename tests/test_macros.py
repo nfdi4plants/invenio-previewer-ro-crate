@@ -1,16 +1,17 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2019 CERN.
-# Copyright (C) 2025 New York University.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2016-2026 CERN.
+# SPDX-FileCopyrightText: 2025 New York University.
+# SPDX-FileCopyrightText: 2026 Graz University of Technology.
+# SPDX-FileCopyrightText: 2025 Brian Kelly.
+# SPDX-License-Identifier: MIT
 
 """Views module tests."""
 
-import zipfile
+import base64
+import json
+import re
+from html.parser import HTMLParser
 
+import pytest
 from flask import render_template_string, url_for
 from invenio_db import db
 from invenio_files_rest.models import ObjectVersion
@@ -56,11 +57,23 @@ def test_default_extension(testapp, webassets, record):
 
 def test_markdown_extension(testapp, webassets, record):
     """Test view with md files."""
-    create_file(record, "markdown.md", BytesIO(b"### Testing markdown ###"))
+    bytes_file = b"""
+### Testing markdown ###
+
+<div>Inline HTML tag</div>
+
+| header1 | header2 |
+| ------- | ------- |
+| data1   | data2   |
+"""
+    create_file(record, "markdown.md", BytesIO(bytes_file))
     with testapp.test_client() as client:
         res = client.get(preview_url(record["control_number"], "markdown.md"))
-        assert "<h3>Testing markdown" in res.get_data(as_text=True)
-        with patch("mistune.markdown", side_effect=Exception):
+        as_text = res.get_data(as_text=True)
+        assert "<h3>Testing markdown" in as_text
+        assert "&lt;div&gt;Inline HTML tag" in as_text
+        assert "<td>data1" in as_text
+        with patch("mistune.Markdown.__call__", side_effect=Exception):
             res = client.get(preview_url(record["control_number"], "markdown.md"))
             assert "we are unfortunately not" in res.get_data(as_text=True)
 
@@ -99,26 +112,62 @@ def test_zip_extension(testapp, webassets, record, zip_fp):
         assert "Example.txt" in res.get_data(as_text=True)
         assert "Lé UTF8 test.txt" in res.get_data(as_text=True)
 
-        with patch("zipfile.ZipFile", side_effect=zipfile.LargeZipFile):
+        with patch.dict(testapp.config, {"PREVIEWER_ZIP_MAX_FILES": 1}):
             res = client.get(preview_url(record["control_number"], "test.zip"))
-            assert "Zipfile is too large" in res.get_data(as_text=True)
+            assert "Too many files inside the ZIP file." in res.get_data(as_text=True)
+
+        with patch.dict(testapp.config, {"PREVIEWER_ZIP_MAX_BYTES": 1}):
+            res = client.get(preview_url(record["control_number"], "test.zip"))
+            assert "ZIP file is too large to be previewed." in res.get_data(
+                as_text=True
+            )
 
         with patch("zipfile.ZipFile", side_effect=Exception):
             res = client.get(preview_url(record["control_number"], "test.zip"))
-            assert "Zipfile is not previewable" in res.get_data(as_text=True)
+            assert "ZIP file is not previewable." in res.get_data(as_text=True)
 
 
-def test_json_extension_valid_file(testapp, webassets, record):
+def test_json_extension_valid_geojson_file(testapp, webassets, record):
+    """Test view with GeoJSON files."""
+    json_data = (
+        '{"type": "FeatureCollection","features":'
+        '[{"type":"Feature","geometry": {"type": "Point",'
+        '"coordinates": [102.0, 0.5]},"properties":{}}]}'
+    )
+    create_file(record, "geo.geojson", BytesIO(b(json_data)))
+
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "geo.geojson"))
+
+        assert '<div id="map" data-file-uri' in res.get_data(as_text=True)
+
+
+def test_json_extension_valid_geojson_file2(testapp, webassets, record):
+    """Test view with GeoJSON files."""
+    json_data = (
+        '{"type": "FeatureCollection","features":'
+        '[{"type":"Feature","geometry": {"type": "Point",'
+        '"coordinates": [102.0, 0.5]},"properties":{}}]}'
+    )
+    create_file(record, "geo.json", BytesIO(b(json_data)))
+
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "geo.json"))
+
+        assert '<div id="map" data-file-uri' in res.get_data(as_text=True)
+
+
+def test_json_extension_valid_object_file(testapp, webassets, record):
     """Test view with JSON files."""
     json_data = (
         '{"name":"invenio","num":42,'
         '"flt":3.14159,"lst":[1,2,3],'
         '"obj":{"field":"<script>alert(1)</script>","num":4}}'
     )
-    create_file(record, "test.json", BytesIO(b(json_data)))
+    create_file(record, "test_object.json", BytesIO(b(json_data)))
 
     with testapp.test_client() as client:
-        res = client.get(preview_url(record["control_number"], "test.json"))
+        res = client.get(preview_url(record["control_number"], "test_object.json"))
         assert 'class="language-javascript"' in res.get_data(as_text=True)
 
         rendered_json = (
@@ -137,6 +186,38 @@ def test_json_extension_valid_file(testapp, webassets, record):
             "        &#34;num&#34;: 4\n"
             "    }\n"
             "}"
+        )
+        assert rendered_json in res.get_data(as_text=True)
+
+
+def test_json_extension_valid_array_file(testapp, webassets, record):
+    """Test view with JSON files."""
+    json_data = (
+        '[{"name":"First item","num":1},'
+        '{"name":"Second item","num":2},'
+        '{"name":"Third item","num":3}]'
+    )
+    create_file(record, "test_array.json", BytesIO(b(json_data)))
+
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "test_array.json"))
+        assert 'class="language-javascript"' in res.get_data(as_text=True)
+
+        rendered_json = (
+            "[\n"
+            "    {\n"
+            "        &#34;name&#34;: &#34;First item&#34;,\n"
+            "        &#34;num&#34;: 1\n"
+            "    },\n"
+            "    {\n"
+            "        &#34;name&#34;: &#34;Second item&#34;,\n"
+            "        &#34;num&#34;: 2\n"
+            "    },\n"
+            "    {\n"
+            "        &#34;name&#34;: &#34;Third item&#34;,\n"
+            "        &#34;num&#34;: 3\n"
+            "    }\n"
+            "]"
         )
         assert rendered_json in res.get_data(as_text=True)
 
@@ -182,11 +263,7 @@ def test_xml_extension(testapp, webassets, record):
 
 def test_ipynb_extension(testapp, webassets, record):
     """Test view with IPython notebooks files."""
-    create_file(
-        record,
-        "test.ipynb",
-        BytesIO(
-            b"""
+    bytes_file = b"""
 {
   "cells": [
     {
@@ -219,7 +296,11 @@ def test_ipynb_extension(testapp, webassets, record):
   "nbformat":4,
   "nbformat_minor":0
 }"""
-        ),
+
+    create_file(
+        record,
+        "test.ipynb",
+        BytesIO(bytes_file),
     )
 
     with testapp.test_client() as client:
@@ -228,6 +309,151 @@ def test_ipynb_extension(testapp, webassets, record):
         assert "This is an example notebook." in as_text
         # test HTML tag sanitize
         assert "<script>alert();</script>" not in as_text
+
+
+def notebook_with_markdown(source):
+    """Serialize a minimal notebook with a single markdown cell."""
+    notebook = {
+        "cells": [{"cell_type": "markdown", "metadata": {}, "source": source}],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 4,
+    }
+    return json.dumps(notebook).encode("utf-8")
+
+
+class URLAttributeParser(HTMLParser):
+    """Collect the entity-decoded values of URL-bearing attributes."""
+
+    URL_ATTRIBUTES = {"href", "src", "xlink:href", "action", "formaction"}
+
+    def __init__(self):
+        """Init the parser."""
+        super().__init__()
+        self.urls = []
+
+    def handle_starttag(self, tag, attrs):
+        """Store URL attribute values of every tag."""
+        for name, value in attrs:
+            if name in self.URL_ATTRIBUTES and value:
+                self.urls.append(value)
+
+
+HARMFUL_URL_PREFIXES = ("javascript:", "vbscript:", "data:text/html")
+# Spaces tabs, newelines
+WHITESPACE_AND_CONTROL_CHARS = re.compile(r"[\x00-\x20]")
+
+
+def is_harmful_url(url):
+    """Check if a URL would execute script when followed by a browser."""
+    url = WHITESPACE_AND_CONTROL_CHARS.sub("", url).lower()
+    return url.startswith(HARMFUL_URL_PREFIXES)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "[click](javascript:alert(document.domain))",
+        "[click](JaVaScriPt:alert(document.domain))",
+        "[click](javascript&#58alert(document.domain))",
+        "![img](javascript:alert(document.domain))",
+        "<javascript:alert(document.domain)>",
+        "[click][ref]\n\n[ref]: javascript:alert(document.domain)",
+        # base64 of "<script>alert(1)</script>"
+        "[click](data:text/html;bas64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)",
+        '<a href="javascript:alert(document.domain")>click</a>',
+    ],
+)
+def test_ipynb_markdown_harmful_links(testapp, webassets, record, source):
+    """Tests that markdown cannon render script executing URLs"""
+    create_file(record, "test.ipynb", BytesIO(notebook_with_markdown(source)))
+
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "test.ipynb"))
+        parser = URLAttributeParser()
+        parser.feed(res.get_data(as_text=True))
+        # Check there are no harmful urls.
+        assert [url for url in parser.urls if is_harmful_url(url)] == []
+
+
+def test_ipynb_markdown_safe_links(testapp, webassets, record):
+    """Test that markdown can still render safe links."""
+    source = (
+        "# Title\n\n"
+        "[zenodo](https://zenodo.org) [notes](notes.md) "
+        "![img](https://zenodo.org/logo.png)"
+    )
+    create_file(record, "test.ipynb", BytesIO(notebook_with_markdown(source)))
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "test.ipynb"))
+
+
+def notebook(cells):
+    """Serialize a minimal notebook with the given cells."""
+    return json.dumps(
+        {"cells": cells, "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
+    ).encode("utf-8")
+
+
+PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+
+def test_ipynb_does_not_inline_local_files(
+    testapp, webassets, record, tmp_path, monkeypatch
+):
+    """Relative image paths must not inline files from the server."""
+    marker = b"server-local-file-content"
+    (tmp_path / "secret.txt").write_bytes(marker)
+    monkeypatch.chdir(tmp_path)
+    source = '![x](secret.txt)\n\n<img src="secret.txt">'
+    create_file(
+        record,
+        "test.ipynb",
+        BytesIO(
+            notebook([{"cell_type": "markdown", "metadata": {}, "source": source}])
+        ),
+    )
+
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "test.ipynb"))
+        as_text = res.get_data(as_text=True)
+        assert res.status_code == 200
+        assert base64.b64encode(marker).decode("ascii") not in as_text
+        assert "data:text/plain" not in as_text
+
+
+def test_ipynb_renders_images(testapp, webassets, record):
+    """Pasted images, plot outputs and image URLs are still rendered."""
+    url = "https://example.org/figure.png"
+    cells = [
+        {"cell_type": "markdown", "metadata": {}, "source": f"![remote]({url})"},
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": "![pasted](attachment:pasted.png)",
+            "attachments": {"pasted.png": {"image/png": PNG_B64}},
+        },
+        {
+            "cell_type": "code",
+            "execution_count": 1,
+            "metadata": {},
+            "source": "plot()",
+            "outputs": [
+                {
+                    "output_type": "display_data",
+                    "data": {"image/png": PNG_B64},
+                    "metadata": {},
+                }
+            ],
+        },
+    ]
+    create_file(record, "test.ipynb", BytesIO(notebook(cells)))
+
+    with testapp.test_client() as client:
+        res = client.get(preview_url(record["control_number"], "test.ipynb"))
+        as_text = res.get_data(as_text=True)
+        assert as_text.count(f"data:image/png;base64,{PNG_B64}") == 2
+        assert f'src="{url}"' in as_text
 
 
 def test_simple_image_extension(testapp, webassets, record):

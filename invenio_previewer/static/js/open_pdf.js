@@ -1,20 +1,37 @@
-/* Copyright 2014 Mozilla Foundation
- * Copyright 2024 TU Wien
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2014 Mozilla Foundation.
+ * SPDX-FileCopyrightText: 2024 TU Wien.
+ * SPDX-FileCopyrightText: 2026 CERN.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 "use strict";
+
+function getPageFromHash() {
+  let hash = window.location.hash || "";
+  // check if the parent window has a hash
+  if (window.parent && window.parent !== window) {
+    hash = window.parent.location.hash || "";
+  }
+  const match = hash.match(/page=(\d+)/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+}
+
+function applyPageFromHash(pdfViewer, pageNumberField) {
+  if (!pdfViewer.pagesCount) return;
+  const pageFromHash = getPageFromHash();
+  if (
+    pageFromHash &&
+    pageFromHash >= 1 &&
+    pageFromHash <= pdfViewer.pagesCount
+  ) {
+    pdfViewer.currentPageNumber = pageFromHash;
+    pageNumberField.value = pageFromHash;
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const { pdfjsLib, pdfjsViewer } = window;
@@ -50,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const zoomInButton = document.getElementById("zoomInButton");
   const zoomOutButton = document.getElementById("zoomOutButton");
   const scaleSelect = document.getElementById("scaleSelect");
+  const downloadButton = document.getElementById("downloadButton");
 
   const eventBus = new pdfjsViewer.EventBus();
 
@@ -118,6 +136,22 @@ document.addEventListener("DOMContentLoaded", () => {
     pdfViewer.currentScaleValue = e.target.value;
   });
 
+  downloadButton.addEventListener("click", async function() {
+    const pdfUrl = new URL(window.location.origin + PDF_URL);
+    pdfUrl.searchParams.append("download", "1");
+
+    const pathComponents = pdfUrl.pathname.split("/");
+    const filename = pathComponents[pathComponents.length - 1];
+
+    // Create and click an invisible link to trigger the download dialog
+    const a = document.createElement("a");
+    a.href = pdfUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
   // Register event handlers on the event bus
   eventBus.on("pagechanging", function(e) {
     pageNumberField.value = e.pageNumber;
@@ -144,7 +178,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Display the number of pages
     pageNumberLabel.textContent = `of ${pdfViewer.pagesCount}`;
+    applyPageFromHash(pdfViewer, pageNumberField);
   });
+
+  window.addEventListener("hashchange", function () {
+    applyPageFromHash(pdfViewer, pageNumberField);
+  });
+  // Listen to hash changes in the parent window
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.addEventListener("hashchange", function () {
+        applyPageFromHash(pdfViewer, pageNumberField);
+      });
+    }
+  } catch (error) {
+    // Ignore.
+  }
 
   // Loading document
   const loadingTask = pdfjsLib.getDocument({

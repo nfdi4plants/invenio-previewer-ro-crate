@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2015-2025 CERN.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2015-2025 CERN.
+# SPDX-License-Identifier: MIT
 
 """Package configuration."""
 
@@ -21,7 +16,7 @@ PREVIEWER_CHARDET_CONFIDENCE = 0.9
 """Confidence threshold for character encoding detection by `cchardet`."""
 
 PREVIEWER_MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024
-"""Maximum file size in bytes for JSON/XML files."""
+"""Maximum file size in bytes for previewers that load entire files into memory."""
 
 PREVIEWER_MAX_IMAGE_SIZE_BYTES = 0.5 * 1024 * 1024
 """Maximum file size in bytes for image files."""
@@ -34,6 +29,9 @@ PREVIEWER_CSV_MAX_BYTES = 100 * 1024 * 1024
 
 PREVIEWER_ZIP_MAX_FILES = 1000
 """Max number of files showed in the ZIP previewer."""
+
+PREVIEWER_ZIP_MAX_BYTES = 100 * 1024 * 1024
+"""Max size of ZIP file showed in the ZIP previewer."""
 
 PREVIEWER_PDF_JS_ENABLE_SCRIPTING = False
 """Enable JavaScript execution in PDF files (disabled by default for security)."""

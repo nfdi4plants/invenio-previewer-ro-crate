@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2015-2025 CERN.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2015-2026 CERN.
+# SPDX-License-Identifier: MIT
 
 """Markdown rendering using mistune library."""
 
@@ -16,17 +11,33 @@ from ..utils import detect_encoding
 
 previewable_extensions = ["md"]
 
+# See: https://mistune.lepture.com/en/latest/guide.html
+# Using the same plugins as the ones enabled by default
+# in the `html()` method.
+# The difference with the `html()` method is that here
+# we are escaping HTML tags present in the Markdown file.
+markdown = mistune.create_markdown(
+    plugins=[
+        "strikethrough",
+        "footnotes",
+        "table",
+    ]
+)
+
 
 def render(file):
     """Render HTML from Markdown file content."""
     with file.open() as fp:
         encoding = detect_encoding(fp, default="utf-8")
-        return mistune.markdown(fp.read().decode(encoding))
+        return markdown(fp.read().decode(encoding))
 
 
 def can_preview(file):
     """Determine if file can be previewed."""
-    return file.is_local() and file.has_extensions(".md")
+    max_file_size = current_app.config.get(
+        "PREVIEWER_MAX_FILE_SIZE_BYTES", 1 * 1024 * 1024
+    )
+    return file.is_local() and file.has_extensions(".md") and file.size <= max_file_size
 
 
 def preview(file):
@@ -40,6 +51,10 @@ def preview(file):
             js_bundles=current_previewer.js_bundles,
             css_bundles=current_previewer.css_bundles,
         )
-    except Exception as e:
-        current_app.logger.exception(str(e))
-        return render_template("invenio_previewer/default.html")
+    except Exception:
+        return render_template(
+            "invenio_previewer/default.html",
+            file=file,
+            js_bundles=current_previewer.js_bundles,
+            css_bundles=current_previewer.css_bundles,
+        )

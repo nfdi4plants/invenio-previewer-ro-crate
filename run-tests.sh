@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2020 CERN.
-# Copyright (C) 2020 Northwestern University.
-# Copyright (C) 2022-2024 Graz University of Technology.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
-
+# SPDX-FileCopyrightText: 2016-2020 CERN.
+# SPDX-FileCopyrightText: 2020 Northwestern University.
+# SPDX-FileCopyrightText: 2022-2024 Graz University of Technology.
+# SPDX-License-Identifier: MIT
 
 # Quit on errors
 set -o errexit
@@ -20,8 +14,7 @@ function cleanup() {
 }
 trap cleanup EXIT
 
-python -m check_manifest
-python -m setup extract_messages --output-file /dev/null
+pybabel extract -F pyproject.toml invenio_previewer --output-file /dev/null
 python -m sphinx.cmd.build -qnNW docs docs/_build/html
 eval "$(docker-services-cli up --db ${DB:-postgresql} --env)"
 python -m pytest

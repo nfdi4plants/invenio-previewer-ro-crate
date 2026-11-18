@@ -1,11 +1,6 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2019 CERN.
-# Copyright (C) 2021 Northwestern University.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2016-2026 CERN.
+# SPDX-FileCopyrightText: 2021 Northwestern University.
+# SPDX-License-Identifier: MIT
 
 """Jupyter Notebook previewer."""
 
@@ -42,7 +37,14 @@ def render(file):
     c.SanitizeHTML.tags = current_app.config.get("ALLOWED_HTML_TAGS", [])
     c.SanitizeHTML.attributes = current_app.config.get("ALLOWED_HTML_ATTRS", {})
     c.SanitizeHTML.strip = True
-    html_exporter = HTMLExporter(config=c, embed_images=True)
+    # `IPythonRenderer` on `nbconvert` has `allow_harmful_protocols` set to
+    # `True` by default, it provides no default way to override this,
+    # but passing the `lexer_options` keyword arguments allows us to
+    # override this functionality.
+    c.HTMLExporter.lexer_options = {"allow_harmful_protocols": False}
+    # Keep False: with embed_images=True, nbconvert inlines relative image paths
+    # from the server's disk, so an uploaded notebook could read local files.
+    html_exporter = HTMLExporter(config=c, embed_images=False)
     html_exporter.template_file = "base"
     body, resources = html_exporter.from_notebook_node(notebook)
     return body, resources
@@ -50,7 +52,12 @@ def render(file):
 
 def can_preview(file):
     """Determine if file can be previewed."""
-    return file.is_local() and file.has_extensions(".ipynb")
+    max_file_size = current_app.config.get(
+        "PREVIEWER_MAX_FILE_SIZE_BYTES", 1 * 1024 * 1024
+    )
+    return (
+        file.is_local() and file.has_extensions(".ipynb") and file.size <= max_file_size
+    )
 
 
 def preview(file):

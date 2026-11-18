@@ -1,15 +1,10 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2019 CERN.
-# Copyright (C) 2024 Graz University of Technology.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
-
+# SPDX-FileCopyrightText: 2016-2019 CERN.
+# SPDX-FileCopyrightText: 2024 Graz University of Technology.
+# SPDX-License-Identifier: MIT
 
 """Pytest configuration."""
 
+import contextlib
 import os
 import shutil
 import tempfile
@@ -62,6 +57,7 @@ def app_config(app_config):
             ),
         ),
         SERVER_NAME="localhost",
+        PREVIEWER_CONTAINER_ITEM_PREFERENCE=["pdfjs", "zipfile"],
     )
     return app_config
 
@@ -194,3 +190,22 @@ def zip_fp(db):
 
     fp.seek(0)
     return fp
+
+
+@pytest.fixture(autouse=True)
+def clear_previewer_preference_cache(testapp):
+    """Clear cached previewer preferences.
+
+    Since we changed properties to cached_property,
+    the values must be cleared between tests as they change the configuration in some tests.
+    """
+    with contextlib.suppress(KeyError):
+        del testapp.extensions["invenio-previewer"].previewable_extensions
+    with contextlib.suppress(KeyError):
+        del testapp.extensions[
+            "invenio-previewer"
+        ].container_item_previewable_extensions
+    with contextlib.suppress(KeyError):
+        del testapp.extensions["invenio-previewer"].previewer_preference
+    with contextlib.suppress(KeyError):
+        del testapp.extensions["invenio-previewer"].previewer_container_item_preference

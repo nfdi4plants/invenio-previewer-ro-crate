@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2019 CERN.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2016-2019 CERN.
+# SPDX-License-Identifier: MIT
 
 """View method for Invenio-Records-UI for previewing files."""
 
@@ -77,3 +72,9 @@ def preview(pid, record, template=None, **kwargs):
 def is_previewable(extension):
     """Test if a file can be previewed checking its extension."""
     return extension in current_previewer.previewable_extensions
+
+
+@blueprint.app_template_test("container_item_previewable")
+def is_container_item_previewable(extension):
+    """Decide if a container item (file inside zip) is previewable."""
+    return extension in current_previewer.container_item_previewable_extensions

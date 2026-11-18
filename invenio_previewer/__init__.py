@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-#
-# This file is part of Invenio.
-# Copyright (C) 2016-2025 CERN.
-# Copyright (C) 2024-2025 Graz University of Technology.
-# Copyright (C) 2025 KTH Royal Institute of Technology.
-#
-# Invenio is free software; you can redistribute it and/or modify it
-# under the terms of the MIT License; see LICENSE file for more details.
+# SPDX-FileCopyrightText: 2016-2025 CERN.
+# SPDX-FileCopyrightText: 2024-2026 Graz University of Technology.
+# SPDX-FileCopyrightText: 2025 KTH Royal Institute of Technology.
+# SPDX-FileCopyrightText: 2025 Brian Kelly.
+# SPDX-FileCopyrightText: 2026 TU Wien.
+# SPDX-License-Identifier: MIT
 
 r"""Invenio module for previewing files.
 
@@ -219,6 +216,10 @@ This module contains several previewers out-of-the-box:
   library. You can also configure the maximum file size in order to avoid
   client and server freezes. By default it is set to 1MB.
 
+- ``GeoJSON``: Previews GeoJSON files. It displays a
+  `Leaflet <https://leafletjs.com>`_ map using
+  `OpenStreetMap <https://www.openstreetmap.org/>`_ tiles.
+
 - ``CSV`` - Previews `CSV` files but it can actually work
   with any other tabular data format in plain text based on the idea of
   separated values due to it is detecting the delimiter between the characters
@@ -253,6 +254,22 @@ Some of the bundled previewers are only working with locally managed  files
 (i.e. files stored in Invenio-Files-REST, which supports many different storage
 backends). This is the case for JSON, XML, CSV, Markdown and ZIP previewers.
 The PDF and Image previewer doesn't need to have the files stored locally.
+
+OpenStreetmap & Content Securty Policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order for map tiles to load from OpenStreetmap your content security policy
+must allow images to load from OSM servers. For example:
+
+  .. code-block:: python
+
+    APP_DEFAULT_SECURE_HEADERS = {
+      'content_security_policy': {
+          'img-src': [
+              "'self'",
+              'data:',
+              "https://tile.openstreetmap.org",
+          ]
 
 Override default previewer
 --------------------------
@@ -352,6 +369,6 @@ Now define the priority for all previewers by adding the newly created
 from .ext import InvenioPreviewer
 from .proxies import current_previewer
 
-__version__ = "3.5.0"
+__version__ = "7.0.0"
 
 __all__ = ("__version__", "current_previewer", "InvenioPreviewer")

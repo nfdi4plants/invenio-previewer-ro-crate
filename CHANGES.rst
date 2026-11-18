@@ -1,15 +1,93 @@
 ..
-    This file is part of Invenio.
-    Copyright (C) 2016-2025 CERN.
-    Copyright (C) 2024-2025 Graz University of Technology.
-    Copyright (C) 2025 KTH Royal Institute of Technology.
-
-    Invenio is free software; you can redistribute it and/or modify it
-    under the terms of the MIT License; see LICENSE file for more details.
+    SPDX-FileCopyrightText: 2016-2025 CERN.
+    SPDX-FileCopyrightText: 2024-2026 Graz University of Technology.
+    SPDX-FileCopyrightText: 2025 KTH Royal Institute of Technology.
+    SPDX-FileCopyrightText: 2026 TU Wien.
+    SPDX-License-Identifier: MIT
 
 
 Changes
 =======
+
+Version v7.0.0 (released 2026-11-04)
+
+- feat(pdfjs): bump pdfjs-dist to v6.x
+
+Version v6.2.1 (released 2026-10-26)
+
+- fix: enforce size limits for notebook and Markdown previews
+
+Version v6.2.0 (released 2026-10-15)
+
+- feat(zip): do not preview archives with too many files
+    * zipfile.ZipFile parses the whole central directory upfront,
+      before the PREVIEWER_ZIP_MAX_FILES limit was applied.
+      Now we check the number of files in the end of
+      central directory record first.
+- feat(zip): add file size check
+- feat(zip): add translations to zip previewer
+- feat(zip): add zip previewer test
+
+Version v6.1.2 (released 2026-10-06)
+
+- Sanitize harmful protocols in nbconvert markdown rendering 
+
+Version v6.1.1 (released 2026-09-28)
+
+- markdown: fix default rendering in case of exceptions
+    * The template rdm_abstract_previewer.html expects a file to be passed to the context
+
+Version v6.1.0 (released 2026-07-31)
+
+- markdown: enable plugins strikethrough, footnotes, table
+
+Version v6.0.2 (released 2026-07-02)
+
+- chore(setup): migrate build backend from setuptools to hatchling
+
+Version v6.0.1 (released 2026-06-30)
+
+- fix: GeoJSON check for JSON which is not an object
+
+Version v6.0.0 (released 2026-06-16)
+
+- chore(setup): bump dependencies
+- chore(git-blame): ignore the SPDX license header commit
+- chore(licenses): update license headers to use SPDX
+
+Version v5.0.1 (released 2026-06-11)
+
+- fix(template): duplicated js load causing double rendering on text select
+
+Version v5.0.0 (released 2026-05-29)
+
+- chore(setup): bump dependencies
+- feat: Extend support for container item previewers.
+- i18n: correct format string in error message
+- feat: GeoJSON support
+
+Version v4.1.1 (released 2026-03-04)
+
+- fix(pdfjs): switch to legacy bundle
+
+Version v4.1.0 (released 2026-03-03)
+
+- refactor(pdfjs): Display 'Download' text on button
+- feat(pdfjs): open PDF at page from URL hash
+
+Version v4.0.0 (released 2026-02-03)
+
+- chore(black): update formatting to >= 26.0
+- chore(setup): bump dependencies
+
+Version v3.6.0 (released 2026-01-15)
+
+- feat(pdfjs): add download button
+- fix(pdfjs): change inherited template for pdfjs
+
+Version v3.5.1 (released 2025-11-20)
+
+- fix(pdfjs): use single quotes for passing init config
 
 Version v3.5.0 (released 2025-11-12)
 
